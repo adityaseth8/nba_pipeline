@@ -1,10 +1,11 @@
 import requests
 import boto3
-import json
+# import json
+import pandas as pd
 
 
 # Set up s3 client
-s3 = boto3.client('s3', aws_access_key_id='redacted', aws_secret_access_key='redacted')
+s3 = boto3.client('s3', aws_access_key_id='REDACTED', aws_secret_access_key='REDACTED')
 
 # Set endpoint URL to fetch data on NBA players 
 url = "https://free-nba.p.rapidapi.com/players"
@@ -23,18 +24,54 @@ headers = {
 # Make request to API and pull data
 response = requests.request("GET", url, headers=headers, params=querystring)
 
-# load response.text from HTTP request into python dictionary
-data = json.loads(response.text)
+# convert JSON response to pandas dataframe
+data = pd.json_normalize(response.json()['data'])
 
-bucket = "nba-data-de"
+# Convert DataFrame to CSV
+csv_data = data.to_csv(index=False)
+
+# set bucket name to upload to
+bucket = "nba-database"
+
 # set key/object name for the data file that will be uploaded to S3 bucket
-key = "nbaPlayersStats.json"
-
-# encode python dictionary as a JSON-formatted string
-json_data = json.dumps(data)
+key = "nbaPlayersStats.csv"
 
 # upload JSON to s3 bucket
 # args: name of s3 bucket to upload to, filename to use for object in bucket, data to upload  
-s3.put_object(Bucket=bucket, Key=key, Body=json_data)
+s3.put_object(Bucket=bucket, Key=key, Body=csv_data)
 
 print("Data stored in S3 bucket: " + bucket + ", with key: " + key)
+
+# Response JSON output
+# {
+#   "data": [
+#     {
+#       "id": 498,
+#       "first_name": "John",
+#       "height_feet": null,
+#       "height_inches": null,
+#       "last_name": "Salley",
+#       "position": "",
+#       "team": {
+#         "id": 9,
+#         "abbreviation": "DET",
+#         "city": "Detroit",
+#         "conference": "East",
+#         "division": "Central",
+#         "full_name": "Detroit Pistons",
+#         "name": "Pistons"
+#       },
+#       "weight_pounds": null
+#     },
+#     {
+#       "id": 499,
+#       "first_name": "Dan",
+#       "height_feet": null,
+#       "height_inches": null,
+# ...
+#     "per_page": 25,
+#     "total_count": 3838
+#   }
+# }
+
+ 
